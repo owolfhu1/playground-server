@@ -170,5 +170,3 @@ io.on('connection', socket => {
 
 //start listening for connections
 server.listen(port, () => console.log(`Listening on port ${port}`));
-
-console.dir(server);
