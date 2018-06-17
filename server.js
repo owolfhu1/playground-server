@@ -1,0 +1,172 @@
+//server variables
+const express = require('express');
+const http = require('http');
+const socketIO = require('socket.io');
+const port = 4001;
+const app = express();
+const server = http.createServer(app);
+const io = socketIO(server);
+
+
+
+//============= Maps ==============//
+const LoginMap = {}; // username : password
+const UserMap = {}; //  username : socketId
+
+//============= Functions ==============//
+
+//sends message to all users in UserMap
+const emitToUserMap = (type, msg) => {
+    for (let key in UserMap) {
+        io.to(UserMap[key]).emit(type, msg);
+    }
+};
+
+//returns a list of keys in a map
+const getList = Map => {
+    let list = [];
+    for (let key in Map) {
+        list.push(key);
+    }
+    return list;
+};
+
+//adds a client to UserMap and handles clients accordingly
+const pushToUserMap = (username, id) => {
+
+    //sends user to all currently logged in clients for OnlineList
+    emitToUserMap('user_login', username);
+
+    //put user in UserMap
+    UserMap[username] = id;
+
+    //hide client's login window
+    io.to(id).emit('login_hide');
+
+    //show client's the lobby windows
+    io.to(id).emit('lobby_show', username);
+
+    //send client the list of users
+    io.to(id).emit('set_login_list', getList(UserMap));
+
+    //send welcome message
+    io.to(id).emit('popup', {
+        title: 'Login Successful!',
+        text: `Welcome to Orion's Playground, I hope you enjoy yourself ${username}.`
+    });
+
+    //send user login message to global chat
+    emitToUserMap('global_chat',`User '${username}' has logged in.`);
+
+};
+
+//interaction from clients will appear here
+io.on('connection', socket => {
+    console.log('User connected');
+
+    //variables specific to client that has connected
+    let id = socket.id;
+    let username = '';
+
+    //just logs a message from the client onto the server
+    socket.on('log', msg => {
+        console.log(msg);
+    });
+
+    //when register is pressed on login component
+    socket.on('register', data => {
+
+        //if the username is taken, send a message
+        if (data.username in LoginMap)
+            socket.emit('popup', {
+                title: 'Username taken',
+                text: `Sorry, the username ${data.username} is taken, please try again`});
+
+        //otherwise register them
+        else {
+
+            //add data to LoginMap
+            LoginMap[data.username] = data.password;
+
+            //tell client they have registered
+            socket.emit('popup', {
+                title: 'Successful Registration',
+                text: `Congratulations, you have registered the username ${data.username}. You may now login with it.`
+            });
+
+            //tell logged in clients a new user has registerd
+            emitToUserMap('global_chat', `New user '${data.username}' has registered.`);
+        }
+
+    });
+
+    //attempts to log user in
+    socket.on('login', data => {
+
+        //if user is already logged in
+        if (data.username in UserMap) {
+            socket.emit('popup', {
+                title: 'Already Logged In',
+                text : `The username ${data.username} is already logged in.`
+            });
+        }
+
+        //if username doesn't exist
+        else if (LoginMap[data.username] == null) {
+            socket.emit('popup', {
+                title: 'Unknown Username',
+                text: `The Username ${data.username} has not been registered. You may`
+                +` press register to register and then you will be able to log in`
+            });
+        }
+
+        //if login information is correct, login
+        else if (LoginMap[data.username] === data.password) {
+            username = data.username;
+            id = socket.id;
+            pushToUserMap(username, id);
+        }
+
+        //if login information is incorrect
+        else
+            socket.emit('popup', {
+                title: 'Incorrect Login',
+                text: `The information you have provided does not match my records, please try again.`
+            });
+
+    });
+
+    //global chat gets message and sends out to clients
+    socket.on('global_chat', msg => emitToUserMap('global_chat',`${username}: ${msg}`));
+
+    //chat with user TODO
+    socket.on('chat_with', username => {
+        console.log(username);
+        socket.emit('popup', {
+            title: 'Feature being built',
+            text : `Soon you will be able to chat with ${username}. Feature currently in the works.`
+        });
+
+    });
+
+    //handles disconnection
+    socket.on('disconnect', () => {
+        console.log('user disconnected');
+
+        //if user is in UserMap (logged in)
+        if (username) {
+
+            //remove them
+            delete UserMap[username];
+
+            //tell logged in clients they were removed
+            emitToUserMap('user_logout', username);
+
+        }
+
+    });
+
+});
+
+//start listening for connections
+server.listen(port, () => console.log(`Listening on port ${port}`));
