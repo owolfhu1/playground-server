@@ -45,6 +45,7 @@ function ChatRoom(id) {
     this.type = 'chat';
     this.id = id;
     this.members = [];
+    this.text = '';
 }
 
 //adds a client to UserMap and handles clients accordingly
@@ -157,19 +158,20 @@ io.on('connection', socket => {
 
     //chat with user TODO
     socket.on('chat_with', name => {
-        //console.log(username);
-        //socket.emit('popup', {
-        //    title: 'Feature being built',
-        //    text : `Soon you will be able to chat with ${username}. Feature currently in the works.`
-        //});
-
+        if(name === username) {
+            socket.emit('popup', {
+                title: 'Lonely??',
+                text: `Sorry but you can't use my app to chat with yourself.`,
+            });
+            return;
+        }
 
         let room = new ChatRoom(makeid());
 
         room.members.push(username);
         room.members.push(name);
 
-        ChatRoom[room.id] = room;
+        ChatMap[room.id] = room;
 
         socket.emit('launch', room);
         io.to(UserMap[name]).emit('launch', room);
@@ -177,6 +179,14 @@ io.on('connection', socket => {
 
         console.log('chat created!');
 
+    });
+
+
+    socket.on('chat_room_msg', data => {
+        let room = ChatMap[data.id];
+        for (let index in room.members) {
+            io.to(UserMap[room.members[index]]).emit(data.id, `${username}: ${data.input}`);
+        }
     });
 
 
