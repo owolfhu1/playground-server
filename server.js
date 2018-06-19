@@ -12,6 +12,7 @@ const io = socketIO(server);
 //============= Maps ==============//
 const LoginMap = {}; // username : password
 const UserMap = {}; //  username : socketId
+const ChatMap = {}; // chatId : {chat object}
 
 //============= Functions ==============//
 
@@ -30,6 +31,21 @@ const getList = Map => {
     }
     return list;
 };
+
+//makes an id..
+function makeid() {
+    let text = "";
+    const possible = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    for (let i = 0; i < 8; i++)
+        text += possible.charAt(Math.floor(Math.random() * possible.length));
+    return text;
+}
+
+function ChatRoom(id) {
+    this.type = 'chat';
+    this.id = id;
+    this.members = [];
+}
 
 //adds a client to UserMap and handles clients accordingly
 const pushToUserMap = (username, id) => {
@@ -140,14 +156,40 @@ io.on('connection', socket => {
     socket.on('global_chat', msg => emitToUserMap('global_chat',`${username}: ${msg}`));
 
     //chat with user TODO
-    socket.on('chat_with', username => {
-        console.log(username);
-        socket.emit('popup', {
-            title: 'Feature being built',
-            text : `Soon you will be able to chat with ${username}. Feature currently in the works.`
-        });
+    socket.on('chat_with', name => {
+        //console.log(username);
+        //socket.emit('popup', {
+        //    title: 'Feature being built',
+        //    text : `Soon you will be able to chat with ${username}. Feature currently in the works.`
+        //});
+
+
+        let room = new ChatRoom(makeid());
+
+        room.members.push(username);
+        room.members.push(name);
+
+        ChatRoom[room.id] = room;
+
+        socket.emit('launch', room);
+        io.to(UserMap[name]).emit('launch', room);
+
+
+        console.log('chat created!');
 
     });
+
+
+
+    //TODO this should do more then just close,
+    //namly send a message to members of the object
+    socket.on('close_me', index => {
+        socket.emit('close', index);
+    });
+
+
+
+
 
     //handles disconnection
     socket.on('disconnect', () => {
