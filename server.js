@@ -27,6 +27,14 @@ const leaveApp = data => {
                 io.to(UserMap[app.members[i]]).emit(data.id, `${data.username} has closed the chat.`);
             }
             break;
+        case 'doc' :
+            let chat = AppMap[app.chatId]
+            for (let i in app.members) {
+                let member = app.members[i];
+                if (chat.members.indexOf(member) > -1)
+                    io.to(UserMap[member]).emit(chat.id, `${data.username} has closed your shared doc.`);
+            }
+            break;
 
 
             //special cases for different app types go here
@@ -69,6 +77,13 @@ function ChatRoom(id) {
     this.type = 'chat';
     this.id = id;
     this.members = [];
+}
+
+function Doc(chat) {
+    this.type = 'doc';
+    this.id = makeid();
+    this.chatId = chat.id;
+    this.members = chat.members;
 }
 
 //adds a client to UserMap and handles clients accordingly
@@ -206,7 +221,7 @@ io.on('connection', socket => {
         //add room to AppMap
         AppMap[room.id] = room;
 
-        //launch the room the the clients
+        //launch the room to the clients
         socket.emit('launch', room);
         io.to(UserMap[name]).emit('launch', room);
 
@@ -222,14 +237,30 @@ io.on('connection', socket => {
     });
 
 
+
+
+
+    socket.on('make_doc', chatId => {
+        let app = new Doc(AppMap[chatId]);
+        AppMap[app.id] = app;
+        for (let i in app.members) {
+            io.to(UserMap[app.members[i]]).emit('launch', app);
+        }
+    });
+
+    socket.on('update_doc', data => {
+        let app = AppMap[data.id];
+        for (let i in app.members) {
+            io.to(UserMap[app.members[i]]).emit(app.id, data.text);
+        }
+    });
+
+
+
     socket.on('close_me', data => {
         socket.emit('close', data.index);
 
         leaveApp({username:username, id:data.id})
-
-
-
-
 
     });
 
