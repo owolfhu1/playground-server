@@ -12,9 +12,33 @@ const io = socketIO(server);
 //============= Maps ==============//
 const LoginMap = {}; // username : password
 const UserMap = {}; //  username : socketId
-const ChatMap = {}; // chatId : {chat object}
+const AppMap = {}; //   chatId : {chat object}
+const UserApps = {}; // username : [array of app ids]
 
 //============= Functions ==============//
+
+const leaveApp = data => {
+    let app = AppMap[data.id];
+    delete app.members[app.members.indexOf(data.username)];
+    UserApps[data.username].splice(UserApps[data.username].indexOf(app.id));
+    switch (app.type) {
+        case 'chat' :
+            for (let i in app.members) {
+                io.to(UserMap[app.members[i]]).emit(data.id, `${data.username} has closed the chat.`);
+            }
+            break;
+
+
+            //special cases for different app types go here
+
+
+    }
+    if (app.members.length === 0){
+        delete AppMap[data.id];
+    }
+};
+
+
 
 //sends message to all users in UserMap
 const emitToUserMap = (type, msg) => {
@@ -45,7 +69,6 @@ function ChatRoom(id) {
     this.type = 'chat';
     this.id = id;
     this.members = [];
-    this.text = '';
 }
 
 //adds a client to UserMap and handles clients accordingly
@@ -142,6 +165,7 @@ io.on('connection', socket => {
             username = data.username;
             id = socket.id;
             pushToUserMap(username, id);
+            UserApps[username] = [];
         }
 
         //if login information is incorrect
@@ -156,8 +180,10 @@ io.on('connection', socket => {
     //global chat gets message and sends out to clients
     socket.on('global_chat', msg => emitToUserMap('global_chat',`${username}: ${msg}`));
 
-    //chat with user TODO
+    //chat with user
     socket.on('chat_with', name => {
+
+        //if user tries to chat with themself
         if(name === username) {
             socket.emit('popup', {
                 title: 'Lonely??',
@@ -166,35 +192,45 @@ io.on('connection', socket => {
             return;
         }
 
+        //make a room
         let room = new ChatRoom(makeid());
 
+        //add the users
         room.members.push(username);
         room.members.push(name);
 
-        ChatMap[room.id] = room;
+        //add the app to the user's app array
+        UserApps[username].push(room.id);
+        UserApps[name].push(room.id);
 
+        //add room to AppMap
+        AppMap[room.id] = room;
+
+        //launch the room the the clients
         socket.emit('launch', room);
         io.to(UserMap[name]).emit('launch', room);
-
-
-        console.log('chat created!');
 
     });
 
 
+    //sends a message to clients chat rooms
     socket.on('chat_room_msg', data => {
-        let room = ChatMap[data.id];
+        let room = AppMap[data.id];
         for (let index in room.members) {
             io.to(UserMap[room.members[index]]).emit(data.id, `${username}: ${data.input}`);
         }
     });
 
 
+    socket.on('close_me', data => {
+        socket.emit('close', data.index);
 
-    //TODO this should do more then just close,
-    //namly send a message to members of the object
-    socket.on('close_me', index => {
-        socket.emit('close', index);
+        leaveApp({username:username, id:data.id})
+
+
+
+
+
     });
 
 
@@ -214,6 +250,13 @@ io.on('connection', socket => {
             //tell logged in clients they were removed
             emitToUserMap('user_logout', username);
 
+            if(UserApps[username].length > 0) {
+                for(let i in UserApps[username])
+                    leaveApp({username:username, id:UserApps[username][i]});
+            }
+
+
+            delete UserApps[username];
         }
 
     });

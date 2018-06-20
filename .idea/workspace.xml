@@ -2,8 +2,6 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="c05b9e88-9d0a-47f2-8984-48cb916bf7aa" name="Default" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/server.js" beforeDir="false" afterPath="$PROJECT_DIR$/server.js" afterDir="false" />
     </list>
     <ignored path="$PROJECT_DIR$/.tmp/" />
@@ -21,14 +19,12 @@
       <file leaf-file-name="server.js" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/server.js">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="287">
-              <caret line="188" column="9" lean-forward="true" selection-start-line="188" selection-start-column="9" selection-end-line="188" selection-end-column="9" />
+            <state relative-caret-position="289">
+              <caret line="194" column="21" selection-start-line="194" selection-start-column="21" selection-end-line="194" selection-end-column="21" />
               <folding>
                 <element signature="n#!!block;n#makeid#0" />
                 <element signature="e#1915#1948#0" />
                 <element signature="e#2036#2871#0" />
-                <element signature="e#2936#4052#0" />
-                <element signature="e#4558#4861#0" />
               </folding>
             </state>
           </provider>
@@ -70,10 +66,10 @@
     </packageJsonPaths>
   </component>
   <component name="ProjectFrameBounds">
-    <option name="x" value="-1199" />
-    <option name="y" value="64" />
-    <option name="width" value="1184" />
-    <option name="height" value="955" />
+    <option name="x" value="-1906" />
+    <option name="y" value="130" />
+    <option name="width" value="769" />
+    <option name="height" value="832" />
   </component>
   <component name="ProjectLevelVcsManager" settingsEditedManually="true" />
   <component name="ProjectView">
@@ -124,25 +120,25 @@
       <option name="presentableId" value="Default" />
       <updated>1529243912652</updated>
       <workItem from="1529243913848" duration="15332000" />
-      <workItem from="1529326270798" duration="8864000" />
+      <workItem from="1529326270798" duration="16979000" />
     </task>
     <servers />
   </component>
   <component name="TimeTrackingManager">
-    <option name="totallyTimeSpent" value="24196000" />
+    <option name="totallyTimeSpent" value="32311000" />
   </component>
   <component name="ToolWindowManager">
-    <frame x="-1199" y="64" width="1184" height="955" extended-state="0" />
+    <frame x="-1906" y="130" width="769" height="832" extended-state="0" />
     <editor active="true" />
     <layout>
-      <window_info content_ui="combo" id="Project" order="0" visible="true" weight="0.2914485" />
+      <window_info content_ui="combo" id="Project" order="0" weight="0.19745958" />
       <window_info anchor="bottom" id="TODO" order="6" />
       <window_info anchor="bottom" id="Docker" order="7" show_stripe_button="false" />
       <window_info anchor="bottom" id="Event Log" order="7" side_tool="true" />
       <window_info anchor="bottom" id="Version Control" order="7" />
       <window_info anchor="bottom" id="Run" order="2" />
       <window_info id="Structure" order="1" side_tool="true" weight="0.25" />
-      <window_info active="true" anchor="bottom" id="Terminal" order="7" visible="true" weight="0.21542227" />
+      <window_info active="true" anchor="bottom" id="Terminal" order="7" visible="true" weight="0.2536023" />
       <window_info id="Favorites" order="2" side_tool="true" />
       <window_info anchor="bottom" id="Debug" order="3" weight="0.4" />
       <window_info anchor="right" content_ui="combo" id="Hierarchy" order="2" weight="0.25" />
@@ -169,8 +165,6 @@
             <element signature="n#!!block;n#makeid#0" />
             <element signature="e#1915#1948#0" />
             <element signature="e#2036#2871#0" />
-            <element signature="e#2936#4052#0" />
-            <element signature="e#4558#4861#0" />
           </folding>
         </state>
       </provider>
@@ -184,14 +178,12 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/server.js">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="287">
-          <caret line="188" column="9" lean-forward="true" selection-start-line="188" selection-start-column="9" selection-end-line="188" selection-end-column="9" />
+        <state relative-caret-position="289">
+          <caret line="194" column="21" selection-start-line="194" selection-start-column="21" selection-end-line="194" selection-end-column="21" />
           <folding>
             <element signature="n#!!block;n#makeid#0" />
             <element signature="e#1915#1948#0" />
             <element signature="e#2036#2871#0" />
-            <element signature="e#2936#4052#0" />
-            <element signature="e#4558#4861#0" />
           </folding>
         </state>
       </provider>
