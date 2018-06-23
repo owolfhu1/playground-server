@@ -10,6 +10,7 @@ const io = socketIO(server);
 
 
 //============= Maps ==============//
+
 const LoginMap = {}; // username : password
 const UserMap = {}; //  username : socketId
 const AppMap = {}; //   chatId : {chat object}
@@ -24,7 +25,7 @@ const leaveApp = data => {
     switch (app.type) {
         case 'chat' :
             for (let i in app.members) {
-                io.to(UserMap[app.members[i]]).emit(data.id, `${data.username} has closed the chat.`);
+                io.to(UserMap[app.members[i]]).emit(data.id + "leave", data.username);
             }
             break;
         case 'doc' :
@@ -65,9 +66,10 @@ const getList = Map => {
 };
 
 //makes an id..
-function makeid() {
+function makeId() {
     let text = "";
-    const possible = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    const possible = "ABCDEFGHIJKLMNOPQRSTUVWXYZ" +
+                     "abcdefghijklmnopqrstuvwxyz";
     for (let i = 0; i < 8; i++)
         text += possible.charAt(Math.floor(Math.random() * possible.length));
     return text;
@@ -81,7 +83,7 @@ function ChatRoom(id) {
 
 function Doc(chat) {
     this.type = 'doc';
-    this.id = makeid();
+    this.id = makeId();
     this.chatId = chat.id;
     this.members = chat.members;
 }
@@ -208,7 +210,7 @@ io.on('connection', socket => {
         }
 
         //make a room
-        let room = new ChatRoom(makeid());
+        let room = new ChatRoom(makeId());
 
         //add the users
         room.members.push(username);
@@ -227,7 +229,6 @@ io.on('connection', socket => {
 
     });
 
-
     //sends a message to clients chat rooms
     socket.on('chat_room_msg', data => {
         let room = AppMap[data.id];
@@ -236,9 +237,29 @@ io.on('connection', socket => {
         }
     });
 
+    socket.on('chat_invite', data => {
+
+        //if the name given belongs to a user
+        if (data.name in UserMap) {
+
+            //get the chat
+            let chat = AppMap[data.id];
+
+            //if user is not already in the chat
+            if (chat.members.indexOf(data.name)) {
+
+                //tell clients that user is being added
+                for (let i in chat.members)
+                    io.to(UserMap[chat.members[i]])
+                        .emit(chat.id + 'add', data.name);
+
+                chat.members.push(data.name);
+                io.to(UserMap[data.name]).emit('launch', chat);
+            }
+        }
 
 
-
+    });
 
     socket.on('make_doc', chatId => {
         let app = new Doc(AppMap[chatId]);
@@ -248,31 +269,33 @@ io.on('connection', socket => {
         }
     });
 
+
+
+
     socket.on('update_doc', data => {
         let app = AppMap[data.id];
         for (let i in app.members) {
-            io.to(UserMap[app.members[i]]).emit(app.id, data.text);
+            io.to(UserMap[app.members[i]])
+                .emit(app.id, {text:data.text, position:data.position});
         }
     });
 
 
 
+
+
+
+
     socket.on('close_me', data => {
         socket.emit('close', data.index);
-
         leaveApp({username:username, id:data.id})
-
     });
-
-
-
-
 
     //handles disconnection
     socket.on('disconnect', () => {
         console.log('user disconnected');
 
-        //if user is in UserMap (logged in)
+        //if user is logged in
         if (username) {
 
             //remove them
@@ -281,11 +304,11 @@ io.on('connection', socket => {
             //tell logged in clients they were removed
             emitToUserMap('user_logout', username);
 
-            if(UserApps[username].length > 0) {
-                for(let i in UserApps[username])
-                    leaveApp({username:username, id:UserApps[username][i]});
-            }
-
+            for(let i in UserApps[username])
+                leaveApp({
+                    username:username,
+                    id:UserApps[username][i]
+                });
 
             delete UserApps[username];
         }
