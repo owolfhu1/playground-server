@@ -1,4 +1,34 @@
-//server variables
+//import Deck from "cardgames/Deck";
+
+const MongoClient = require('mongodb').MongoClient;
+const DbUrl = "mongodb://orion:pass12@ds117711.mlab.com:17711/heroku_psk3b1p4";
+
+// MongoClient.connect(DbUrl, function(err, db) {
+//     if (err) throw err;
+//
+//
+//     let dbo = db.db("heroku_psk3b1p4");
+//
+//
+//     dbo.collection("login").find({}).toArray(function(err, result) {
+//         if (err) throw err;
+//         console.log(result);
+//         db.close();
+//     });
+//
+//     //let myobj = { name: "testname", pass: "testpass" };
+//
+//     // dbo.collection("login").insertOne(myobj, function(err, res) {
+//     //     if (err) throw err;
+//     //     console.log("1 document inserted");
+//     //     db.close();
+//     // });
+//
+// });
+
+
+
+//============= Server ==============//
 const express = require('express');
 const http = require('http');
 const socketIO = require('socket.io');
@@ -7,49 +37,91 @@ const app = express();
 const server = http.createServer(app);
 const io = socketIO(server);
 
-
-
 //============= Maps ==============//
 
-const LoginMap = {}; // username : password
-const UserMap = {}; //  username : socketId
-const AppMap = {}; //   chatId : {chat object}
-const UserApps = {}; // username : [array of app ids]
+const LoginMap = {};    // username : password
+const UserMap = {};     // username : socketId
+const AppMap = {};      //   appId : {app object}
+const UserApps = {};    // username : [array of app ids]
+
+//load login collection into LoginMap
+MongoClient.connect(DbUrl, function(err, db) {
+    if (err) throw err;
+
+    //get the database
+    let dbo = db.db("heroku_psk3b1p4");
+
+    //find al documents
+    dbo.collection("login").find({}).toArray(function(err, result) {
+        if (err) throw err;
+
+        //look at each document and add it to LoginMap
+        for (let i in result)
+            LoginMap[result[i].name] = result[i].pass;
+
+        //close the database
+        db.close();
+
+    });
+
+});
 
 //============= Functions ==============//
 
+//takes app id and username, and handles removing username from app
 const leaveApp = data => {
+
+    //get the app
     let app = AppMap[data.id];
+
+    //remove user from app
     delete app.members[app.members.indexOf(data.username)];
+
+    //remove app from user's UserApps array
     UserApps[data.username].splice(UserApps[data.username].indexOf(app.id));
+
+    //switch on app.type, handles specific apps differently
     switch (app.type) {
+
+        //chat room
         case 'chat' :
+
+            //tells all remaining members to remove user
             for (let i in app.members) {
                 io.to(UserMap[app.members[i]]).emit(data.id + "leave", data.username);
             }
             break;
+
+        //shared doc
         case 'doc' :
-            let chat = AppMap[app.chatId]
+
+            //get the chat associated with document
+            let chat = AppMap[app.chatId];
+
+            //tell chat members user has closed document
             for (let i in app.members) {
-                let member = app.members[i];
-                if (chat.members.indexOf(member) > -1)
-                    io.to(UserMap[member]).emit(chat.id, `${data.username} has closed your shared doc.`);
+                if (chat.members.indexOf(app.members[i]) > -1)
+                    io.to(UserMap[app.members[i]])
+                        .emit(chat.id, `${data.username} has closed your shared doc.`);
             }
             break;
 
-
-            //special cases for different app types go here
-
+        //.
+        //::..
+        //more special cases to go here...
+        //::''
+        //'
 
     }
+
+    //if there are no members left in app, delete app
     if (app.members.length === 0){
         delete AppMap[data.id];
     }
+
 };
 
-
-
-//sends message to all users in UserMap
+//sends emit to all users in UserMap
 const emitToUserMap = (type, msg) => {
     for (let key in UserMap) {
         io.to(UserMap[key]).emit(type, msg);
@@ -66,21 +138,23 @@ const getList = Map => {
 };
 
 //makes an id..
-function makeId() {
+const makeId = () => {
     let text = "";
     const possible = "ABCDEFGHIJKLMNOPQRSTUVWXYZ" +
                      "abcdefghijklmnopqrstuvwxyz";
     for (let i = 0; i < 8; i++)
         text += possible.charAt(Math.floor(Math.random() * possible.length));
     return text;
-}
+};
 
+//chat room factory
 function ChatRoom(id) {
     this.type = 'chat';
     this.id = id;
     this.members = [];
 }
 
+//shared document factory
 function Doc(chat) {
     this.type = 'doc';
     this.id = makeId();
@@ -117,7 +191,7 @@ const pushToUserMap = (username, id) => {
 
 };
 
-//interaction from clients will appear here
+//interaction from clients handled here
 io.on('connection', socket => {
     console.log('User connected');
 
@@ -125,7 +199,7 @@ io.on('connection', socket => {
     let id = socket.id;
     let username = '';
 
-    //just logs a message from the client onto the server
+    //just logs a message from the client onto the server for testing
     socket.on('log', msg => {
         console.log(msg);
     });
@@ -133,27 +207,89 @@ io.on('connection', socket => {
     //when register is pressed on login component
     socket.on('register', data => {
 
+        // ===== VALIDATION =====
+        //user tried to register '', deny
+        if (data.username === '') {
+            socket.emit('popup', {
+                title: 'Bad Username',
+                text: 'Please enter a username to register'
+            });
+            return;
+        }
+        //username is too long
+        if (data.username.length > 12) {
+            socket.emit('popup', {
+                title: 'Bad Username',
+                text: 'Please enter a username to register'
+            });
+            return;
+        }
         //if the username is taken, send a message
-        if (data.username in LoginMap)
+        if (data.username in LoginMap) {
             socket.emit('popup', {
                 title: 'Username taken',
-                text: `Sorry, the username ${data.username} is taken, please try again`});
+                text: `Sorry, the username ${data.username} is taken, please try again`
+            });
+        }
 
         //otherwise register them
-        else {
+        else
+            MongoClient.connect(DbUrl, function(err, db) {
 
-            //add data to LoginMap
-            LoginMap[data.username] = data.password;
+                //if there is an error
+                if (err) {
 
-            //tell client they have registered
-            socket.emit('popup', {
-                title: 'Successful Registration',
-                text: `Congratulations, you have registered the username ${data.username}. You may now login with it.`
+                    //tell the error
+                    socket.emit('popup', {
+                        title: 'Error!',
+                        text: err + "",
+                    });
+
+                    //throw it
+                    throw err;
+
+                }
+
+                //get the database
+                let dbo = db.db("heroku_psk3b1p4");
+
+                //make doc to insert
+                let loginDoc = { name: data.username, pass: data.password };
+
+                //function to insert to database
+                dbo.collection("login").insertOne(loginDoc, function(err, res) {
+                    //if there is an error
+                    if (err) {
+
+                        //tell the error
+                        socket.emit('popup', {
+                            title: 'Error!',
+                            text: err + "",
+                        });
+
+                        //throw it
+                        throw err;
+
+                    }
+
+                    //add data to LoginMap
+                    LoginMap[data.username] = data.password;
+
+                    //tell client they have registered
+                    socket.emit('popup', {
+                        title: 'Successful Registration',
+                        text: `Congratulations, you have registered the username ${data.username}. You may now login with it.`
+                    });
+
+                    //tell logged in clients a new user has registerd
+                    emitToUserMap('global_chat', `New user '${data.username}' has registered.`);
+
+                    //close db
+                    db.close();
+
+                });
+
             });
-
-            //tell logged in clients a new user has registerd
-            emitToUserMap('global_chat', `New user '${data.username}' has registered.`);
-        }
 
     });
 
@@ -237,6 +373,8 @@ io.on('connection', socket => {
         }
     });
 
+
+    //invites a user to an existing chat
     socket.on('chat_invite', data => {
 
         //if the name given belongs to a user
@@ -246,21 +384,25 @@ io.on('connection', socket => {
             let chat = AppMap[data.id];
 
             //if user is not already in the chat
-            if (chat.members.indexOf(data.name)) {
+            if (chat.members.indexOf(data.name) === -1) {
 
                 //tell clients that user is being added
                 for (let i in chat.members)
                     io.to(UserMap[chat.members[i]])
                         .emit(chat.id + 'add', data.name);
 
+                //add them to chat
                 chat.members.push(data.name);
+
+                //launch chat to invited user
                 io.to(UserMap[data.name]).emit('launch', chat);
+
             }
         }
 
-
     });
 
+    //creates a shared doc for everyone at a table
     socket.on('make_doc', chatId => {
         let app = new Doc(AppMap[chatId]);
         AppMap[app.id] = app;
@@ -269,9 +411,7 @@ io.on('connection', socket => {
         }
     });
 
-
-
-
+    //when user types in doc, updates for all members
     socket.on('update_doc', data => {
         let app = AppMap[data.id];
         for (let i in app.members) {
@@ -279,6 +419,7 @@ io.on('connection', socket => {
                 .emit(app.id, {text:data.text, position:data.position});
         }
     });
+
 
 
 
