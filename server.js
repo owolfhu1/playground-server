@@ -1,32 +1,5 @@
-//import Deck from "cardgames/Deck";
-
 const MongoClient = require('mongodb').MongoClient;
-const DbUrl = "mongodb://orion:pass12@ds117711.mlab.com:17711/heroku_psk3b1p4";
-
-// MongoClient.connect(DbUrl, function(err, db) {
-//     if (err) throw err;
-//
-//
-//     let dbo = db.db("heroku_psk3b1p4");
-//
-//
-//     dbo.collection("login").find({}).toArray(function(err, result) {
-//         if (err) throw err;
-//         console.log(result);
-//         db.close();
-//     });
-//
-//     //let myobj = { name: "testname", pass: "testpass" };
-//
-//     // dbo.collection("login").insertOne(myobj, function(err, res) {
-//     //     if (err) throw err;
-//     //     console.log("1 document inserted");
-//     //     db.close();
-//     // });
-//
-// });
-
-
+const dbUrl = "mongodb://orion:pass12@ds117711.mlab.com:17711/heroku_psk3b1p4";
 
 //============= Server ==============//
 const express = require('express');
@@ -39,32 +12,9 @@ const io = socketIO(server);
 
 //============= Maps ==============//
 
-const LoginMap = {};    // username : password
 const UserMap = {};     // username : socketId
 const AppMap = {};      //   appId : {app object}
 const UserApps = {};    // username : [array of app ids]
-
-//load login collection into LoginMap
-MongoClient.connect(DbUrl, function(err, db) {
-    if (err) throw err;
-
-    //get the database
-    let dbo = db.db("heroku_psk3b1p4");
-
-    //find al documents
-    dbo.collection("login").find({}).toArray(function(err, result) {
-        if (err) throw err;
-
-        //look at each document and add it to LoginMap
-        for (let i in result)
-            LoginMap[result[i].name] = result[i].pass;
-
-        //close the database
-        db.close();
-
-    });
-
-});
 
 //============= Functions ==============//
 
@@ -191,6 +141,23 @@ const pushToUserMap = (username, id) => {
 
 };
 
+//hashes a string
+const hash = s => {
+    let a = 1;
+    let c = 0;
+    let h, o;
+    if (s) {
+        a = 0;
+        for (h = s.length - 1; h >= 0; h--) {
+            o = s.charCodeAt(h);
+            a = (a<<6&268435455) + o + (o<<14);
+            c = a & 266338304;
+            a = c!==0?a^c>>21:a;
+        }
+    }
+    return String(a);
+};
+
 //interaction from clients handled here
 io.on('connection', socket => {
     console.log('User connected');
@@ -206,6 +173,9 @@ io.on('connection', socket => {
 
     //when register is pressed on login component
     socket.on('register', data => {
+
+        //hash the password (more secure than nothing)
+        data.password = hash(data.password);
 
         // ===== VALIDATION =====
         //user tried to register '', deny
@@ -224,109 +194,99 @@ io.on('connection', socket => {
             });
             return;
         }
-        //if the username is taken, send a message
-        if (data.username in LoginMap) {
-            socket.emit('popup', {
-                title: 'Username taken',
-                text: `Sorry, the username ${data.username} is taken, please try again`
-            });
-        }
 
-        //otherwise register them
-        else
-            MongoClient.connect(DbUrl, function(err, db) {
+        MongoClient.connect(dbUrl, function(err, db) {
+            if (err) throw err;
+            let dbo = db.db("heroku_psk3b1p4");
+            dbo.collection("login").findOne({name:data.username}, function(err, result) {
+                if (err) throw err;
 
-                //if there is an error
-                if (err) {
-
-                    //tell the error
+                //if name exists
+                if (result)
                     socket.emit('popup', {
-                        title: 'Error!',
-                        text: err + "",
+                        title: 'Username taken',
+                        text: `Sorry, the username ${data.username} is taken, please try another name.`
                     });
 
-                    //throw it
-                    throw err;
+                //otherwise register them
+                else
+                    dbo.collection('login').insertOne({name: data.username, pass: data.password}, (err,res) => {
+                        if (err) throw err;
 
-                }
-
-                //get the database
-                let dbo = db.db("heroku_psk3b1p4");
-
-                //make doc to insert
-                let loginDoc = { name: data.username, pass: data.password };
-
-                //function to insert to database
-                dbo.collection("login").insertOne(loginDoc, function(err, res) {
-                    //if there is an error
-                    if (err) {
-
-                        //tell the error
+                        //send success message
                         socket.emit('popup', {
-                            title: 'Error!',
-                            text: err + "",
+                            title: 'Successful Registration',
+                            text: `Congratulations, you have registered the username ${data.username}. You may now login with it.`
                         });
 
-                        //throw it
-                        throw err;
+                        //send message to global chat telling users someone has registered
+                        emitToUserMap('global_chat', `New user '${data.username}' has registered.`);
 
-                    }
-
-                    //add data to LoginMap
-                    LoginMap[data.username] = data.password;
-
-                    //tell client they have registered
-                    socket.emit('popup', {
-                        title: 'Successful Registration',
-                        text: `Congratulations, you have registered the username ${data.username}. You may now login with it.`
                     });
 
-                    //tell logged in clients a new user has registerd
-                    emitToUserMap('global_chat', `New user '${data.username}' has registered.`);
-
-                    //close db
-                    db.close();
-
-                });
-
+                db.close();
             });
+        });
 
     });
 
     //attempts to log user in
     socket.on('login', data => {
 
+        //hash the password (more secure than nothing)
+        data.password = hash(data.password);
+
         //if user is already logged in
-        if (data.username in UserMap) {
+        if (data.username in UserMap)
             socket.emit('popup', {
                 title: 'Already Logged In',
                 text : `The username ${data.username} is already logged in.`
             });
-        }
 
-        //if username doesn't exist
-        else if (LoginMap[data.username] == null) {
-            socket.emit('popup', {
-                title: 'Unknown Username',
-                text: `The Username ${data.username} has not been registered. You may`
-                +` press register to register and then you will be able to log in`
+        else {
+            //connect to database
+            MongoClient.connect(dbUrl, function (err, db) {
+                if (err) throw err;
+
+                //get database
+                let dbo = db.db("heroku_psk3b1p4");
+
+                //get the relevant login doc
+                dbo.collection("login").findOne({name: data.username}, function (err, result) {
+                    if (err) throw err;
+
+                    console.log(result);
+
+                    //if username doesn't exist
+                    if (!result) {
+                        socket.emit('popup', {
+                            title: 'Unknown Username',
+                            text: `The Username ${data.username} has not been registered. You may`
+                            + ` press register to register and then you will be able to log in.`
+                        });
+                    }
+
+                    //if login information is correct, login
+                    else if (result.pass === data.password) {
+                        username = data.username;
+                        pushToUserMap(username, id);
+                        UserApps[username] = [];
+                    }
+
+                    //if login information is incorrect
+                    else
+                        socket.emit('popup', {
+                            title: 'Incorrect Login',
+                            text: `The information you have provided does not match my records, please try again.`
+                        });
+
+                    //close db
+                    db.close();
+                });
+
             });
-        }
 
-        //if login information is correct, login
-        else if (LoginMap[data.username] === data.password) {
-            username = data.username;
-            id = socket.id;
-            pushToUserMap(username, id);
-            UserApps[username] = [];
         }
-
-        //if login information is incorrect
-        else
-            socket.emit('popup', {
-                title: 'Incorrect Login',
-                text: `The information you have provided does not match my records, please try again.`
-            });
 
     });
 
@@ -372,7 +332,6 @@ io.on('connection', socket => {
             io.to(UserMap[room.members[index]]).emit(data.id, `${username}: ${data.input}`);
         }
     });
-
 
     //invites a user to an existing chat
     socket.on('chat_invite', data => {
@@ -420,13 +379,7 @@ io.on('connection', socket => {
         }
     });
 
-
-
-
-
-
-
-
+    //closes a app for a client
     socket.on('close_me', data => {
         socket.emit('close', data.index);
         leaveApp({username:username, id:data.id})
