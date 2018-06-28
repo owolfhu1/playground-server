@@ -1,6 +1,7 @@
 //============= Database ==============//
 
 const Login = require('./database/login');
+const Docs = require('./database/docs');
 
 //============= Server ==============//
 
@@ -200,8 +201,12 @@ io.on('connection', socket => {
                 });
         
                 //if registered let logged in users know
-                if (success)
+                //and add document to db for them to save docs to
+                if (success) {
                     emitToUserMap('global_chat', `New user '${data.username}' has registered.`);
+                    Docs.create(data.username);
+                }
+                
             });
 
     });
@@ -334,6 +339,12 @@ io.on('connection', socket => {
         socket.emit('close', data.index);
         leaveApp({username:username, id:data.id})
     });
+    
+    
+    
+    
+    
+    
 
     //handles disconnection
     socket.on('disconnect', () => {
