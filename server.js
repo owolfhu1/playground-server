@@ -355,6 +355,27 @@ io.on('connection', socket => {
                 .emit(app.id, {text:data.text, position:data.position});
         }
     });
+    
+    socket.on('save_doc', data => {
+        
+        //todo: validate data.name
+        
+        socket.emit(data.id+'save', data.name);
+        
+    });
+    
+    socket.on('save_doc_to_db', data => {
+       
+        console.log(data);
+        
+        Docs.save({
+            filename:data.filename,
+            user:username,
+            text:data.text
+        },console.log)
+        
+    });
+    
 
     //closes a app for a client
     socket.on('close_me', data => {

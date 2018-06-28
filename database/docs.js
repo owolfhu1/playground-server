@@ -22,7 +22,7 @@ const save = (docData, callback) => {
         toSet[docData.filename] = docData.text;
         dbo.collection('docs').updateOne({name:docData.user}, {$set:toSet}, (err,res) => {
             if (err) throw err;
-            callback(res);
+            callback(res.result);
             db.close();
         });
     });
