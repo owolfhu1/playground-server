@@ -76,8 +76,6 @@ const register = (registrationData, callback) => {
     
 };
 
-module.exports = {
-    login : login,
-    register : register
-};
+//export functions
+module.exports = {login, register};
 

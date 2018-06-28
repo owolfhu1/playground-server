@@ -28,12 +28,55 @@ const save = (docData, callback) => {
     });
 };
 
-
-
-
-
-
-module.exports = {
-    create : create,
-    save : save,
+//removes a saved doc from user's doc document
+const remove = (docData, callback) => {
+    MongoClient.connect(dbUrl, (err,db) => {
+        if (err) throw err;
+        let dbo = db.db("heroku_psk3b1p4");
+        let toUnSet = {};
+        toUnSet[docData.filename] = 1;
+        dbo.collection('docs').updateOne({name:docData.user}, {$unset:toUnSet}, (err,res) => {
+            if (err) throw err;
+            callback(res);
+            db.close();
+        });
+    });
 };
+
+const getOneDoc = (name, filename, callback) => {
+    
+    MongoClient.connect(dbUrl, (err,db) => {
+        if (err) throw err;
+        let dbo = db.db("heroku_psk3b1p4");
+        dbo.collection('docs').findOne({name}, (err,res) => {
+            if (err) throw err;
+            callback(res[filename]);
+            db.close();
+        });
+    });
+    
+};
+
+const getAllFilenames = (name, callback) => {
+    
+    MongoClient.connect(dbUrl, (err,db) => {
+        if (err) throw err;
+        let dbo = db.db("heroku_psk3b1p4");
+        dbo.collection('docs').findOne({name}, (err,res) => {
+            if (err) throw err;
+            
+            let array = [];
+            
+            for (let key in res)
+                if (key !== '_id' && key !== 'name')
+                    array.push(key);
+            
+            callback(array);
+            db.close();
+        });
+    });
+    
+};
+
+//export functions
+module.exports = {create, save, remove, getOneDoc, getAllFilenames};

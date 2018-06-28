@@ -1,7 +1,29 @@
 //============= Database ==============//
 
 const Login = require('./database/login');
-const Docs = require('./database/docs');
+const Docs = require('./database/docs')
+
+
+//database test area
+
+//Docs.create('bob');
+
+// Docs.save({
+//     user : 'bob',
+//     filename : 'untitled',
+//     text : 'here is some text, inside the document.\nHello world.'
+// },console.log);
+
+//Docs.getOneDoc('bob','untitled',console.log);
+
+//Docs.getAllFilenames('bob',console.log);
+
+// Docs.remove({
+//     user : 'bob',
+//     filename : 'untitled'
+// },console.log);
+
+//end test
 
 //============= Server ==============//
 
