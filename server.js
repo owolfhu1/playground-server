@@ -71,6 +71,7 @@ const leaveApp = data => {
 
 };
 
+
 //sends emit to all users in UserMap
 const emitToUserMap = (type, msg) => {
     for (let key in UserMap) {
