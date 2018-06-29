@@ -37,26 +37,28 @@ const remove = (docData, callback) => {
         toUnSet[docData.filename] = 1;
         dbo.collection('docs').updateOne({name:docData.user}, {$unset:toUnSet}, (err,res) => {
             if (err) throw err;
-            callback(res);
+            callback();
             db.close();
         });
     });
 };
 
+//gets a document and runs callback(documentText)
 const getOneDoc = (name, filename, callback) => {
-    
     MongoClient.connect(dbUrl, (err,db) => {
         if (err) throw err;
         let dbo = db.db("heroku_psk3b1p4");
         dbo.collection('docs').findOne({name}, (err,res) => {
             if (err) throw err;
+
+            //callback results
             callback(res[filename]);
             db.close();
         });
     });
-    
 };
 
+//gets list of keys in user's saved doc document and runs callback(arrayOfKeys)
 const getAllFilenames = (name, callback) => {
     
     MongoClient.connect(dbUrl, (err,db) => {
@@ -64,13 +66,16 @@ const getAllFilenames = (name, callback) => {
         let dbo = db.db("heroku_psk3b1p4");
         dbo.collection('docs').findOne({name}, (err,res) => {
             if (err) throw err;
-            
+
+            //start with empty array
             let array = [];
-            
+
+            //add each key that isnt _id or name
             for (let key in res)
                 if (key !== '_id' && key !== 'name')
                     array.push(key);
-            
+
+            //callback the made array
             callback(array);
             db.close();
         });

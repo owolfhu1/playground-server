@@ -1,29 +1,12 @@
 //============= Database ==============//
 
 const Login = require('./database/login');
-const Docs = require('./database/docs')
+const Docs = require('./database/docs');
 
+//============= Tools ==============//
 
-//database test area
-
-//Docs.create('bob');
-
-// Docs.save({
-//     user : 'bob',
-//     filename : 'untitled',
-//     text : 'here is some text, inside the document.\nHello world.'
-// },console.log);
-
-//Docs.getOneDoc('bob','untitled',console.log);
-
-//Docs.getAllFilenames('bob',console.log);
-
-// Docs.remove({
-//     user : 'bob',
-//     filename : 'untitled'
-// },console.log);
-
-//end test
+const Tools = require('./tools/tools');
+const Constructors = require('./tools/constructors');
 
 //============= Server ==============//
 
@@ -38,7 +21,7 @@ const io = socketIO(server);
 //============= Maps ==============//
 
 const UserMap = {};     // username : socketId
-const AppMap = {};      //   appId : {app object}
+const AppMap = {};      //    appId : {app object}
 const UserApps = {};    // username : [array of app ids]
 
 //============= Functions ==============//
@@ -96,47 +79,12 @@ const leaveApp = data => {
 
 };
 
-
 //sends emit to all users in UserMap
 const emitToUserMap = (type, msg) => {
     for (let key in UserMap) {
         io.to(UserMap[key]).emit(type, msg);
     }
 };
-
-//returns a list of keys in a map
-const getList = Map => {
-    let list = [];
-    for (let key in Map) {
-        list.push(key);
-    }
-    return list;
-};
-
-//makes an id..
-const makeId = () => {
-    let text = "";
-    const possible = "ABCDEFGHIJKLMNOPQRSTUVWXYZ" +
-                     "abcdefghijklmnopqrstuvwxyz";
-    for (let i = 0; i < 8; i++)
-        text += possible.charAt(Math.floor(Math.random() * possible.length));
-    return text;
-};
-
-//chat room factory
-function ChatRoom(id) {
-    this.type = 'chat';
-    this.id = id;
-    this.members = [];
-}
-
-//shared document factory
-function Doc(chat) {
-    this.type = 'doc';
-    this.id = makeId();
-    this.chatId = chat.id;
-    this.members = chat.members;
-}
 
 //adds a client to UserMap and handles clients accordingly
 const pushToUserMap = (username, id) => {
@@ -154,28 +102,11 @@ const pushToUserMap = (username, id) => {
     io.to(id).emit('lobby_show', username);
 
     //send client the list of users
-    io.to(id).emit('set_login_list', getList(UserMap));
+    io.to(id).emit('set_login_list', Tools.getList(UserMap));
 
     //send user login message to global chat
     emitToUserMap('global_chat',`User '${username}' has logged in.`);
 
-};
-
-//hashes a string
-const hash = s => {
-    let a = 1;
-    let c = 0;
-    let h, o;
-    if (s) {
-        a = 0;
-        for (h = s.length - 1; h >= 0; h--) {
-            o = s.charCodeAt(h);
-            a = (a<<6&268435455) + o + (o<<14);
-            c = a & 266338304;
-            a = c!==0?a^c>>21:a;
-        }
-    }
-    return String(a);
 };
 
 //interaction from clients handled here
@@ -195,7 +126,7 @@ io.on('connection', socket => {
     socket.on('register', data => {
         
         //hash the password (more secure than nothing)
-        data.password = hash(data.password);
+        data.password = Tools.hash(data.password);
 
         // ===== VALIDATION =====
         //user tried to register '', deny
@@ -238,7 +169,7 @@ io.on('connection', socket => {
     socket.on('login', data => {
 
         //hash the password (more secure than nothing)
-        data.password = hash(data.password);
+        data.password = Tools.hash(data.password);
     
         //if user is already logged in
         if (data.username in UserMap)
@@ -274,7 +205,7 @@ io.on('connection', socket => {
     //chat with user
     socket.on('chat_with', name => {
 
-        //if user tries to chat with themself
+        //if user tries to chat with them self
         if(name === username) {
             socket.emit('popup', {
                 title: 'Lonely??',
@@ -284,7 +215,7 @@ io.on('connection', socket => {
         }
 
         //make a room
-        let room = new ChatRoom(makeId());
+        let room = new Constructors.ChatRoom();
 
         //add the users
         room.members.push(username);
@@ -341,10 +272,11 @@ io.on('connection', socket => {
 
     //creates a shared doc for everyone at a table
     socket.on('make_doc', chatId => {
-        let app = new Doc(AppMap[chatId]);
+        let app = new Constructors.Doc(AppMap[chatId]);
         AppMap[app.id] = app;
         for (let i in app.members) {
             io.to(UserMap[app.members[i]]).emit('launch', app);
+            Docs.getAllFilenames(app.members[i],array=> io.to(UserMap[app.members[i]]).emit('doc_names',array));
         }
     });
 
@@ -356,39 +288,77 @@ io.on('connection', socket => {
                 .emit(app.id, {text:data.text, position:data.position});
         }
     });
-    
+
+    //requests from doc menu to save the document-> sends request to client document window to save doc
+    //that then sends the request back to server with document body and title which finaly gets saved
+    //TODO: refactor this to do all the work in here and get rid of 'save_doc_to_db' below!!!
+    /**can probably refactor by sending a bound function as a prop to doc menu*/
+    //so yeah, fix that lazy bum..
     socket.on('save_doc', data => {
-        
-        //todo: validate data.name
-        
+
+        //if invalid title, make title 'untitled'
+        if (data.name === '' || data.name === 'name' || data.name.indexOf('.') > -1)
+            data.name = 'untitled';
+
+        //sends request back to client
         socket.emit(data.id+'save', data.name);
         
     });
-    
+    //gets doc value and title and saves the data at last
     socket.on('save_doc_to_db', data => {
-       
-        console.log(data);
-        
+
+        //saves data
         Docs.save({
             filename:data.filename,
             user:username,
             text:data.text
-        },console.log)
+        }, () => {
+            //in callback
+            //send file names to client's shared docs
+            Docs.getAllFilenames(username,array=> socket.emit('doc_names',array));
+
+            //send title to doc
+            socket.emit(data.id+'title', data.filename)
+        })
         
     });
-    
 
-    //closes a app for a client
+    //when client requests to load a document,
+    //get the document and send to all doc members.
+    socket.on('load_doc', data => {
+
+        //get the document
+        Docs.getOneDoc(username, data.name, text => {
+            //in callback
+            //send title to user
+            socket.emit(data.appId+'title', data.name);
+
+            //get the app
+            let app = AppMap[data.appId];
+
+            //send loaded data to all doc users
+            for (let i in app.members) {
+                io.to(UserMap[app.members[i]])
+                    .emit(app.id, {text, position:0});
+            }
+
+        });
+
+    });
+
+    //client requests to delete a doc, delete it and update menu buttons
+    socket.on('delete_doc', title => {
+        Docs.remove({filename:title,user:username},() => {
+            //send file names to client's shared docs to make buttons
+            Docs.getAllFilenames(username,array=> socket.emit('doc_names',array));
+        })
+    });
+
+    //closes an app for a client
     socket.on('close_me', data => {
         socket.emit('close', data.index);
         leaveApp({username:username, id:data.id})
     });
-    
-    
-    
-    
-    
-    
 
     //handles disconnection
     socket.on('disconnect', () => {
@@ -403,13 +373,16 @@ io.on('connection', socket => {
             //tell logged in clients they were removed
             emitToUserMap('user_logout', username);
 
+            //for each app the user is using, close it
             for(let i in UserApps[username])
                 leaveApp({
                     username:username,
                     id:UserApps[username][i]
                 });
 
+            //remove their UserApps map key
             delete UserApps[username];
+
         }
 
     });

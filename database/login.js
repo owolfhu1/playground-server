@@ -1,6 +1,7 @@
 const MongoClient = require('mongodb').MongoClient;
 const dbUrl = "mongodb://orion:pass12@ds117711.mlab.com:17711/heroku_psk3b1p4";
 
+//handles verifying data is correct then runs callback(boolean,message)
 const login = (loginData, callback) => {
   
     //default message
@@ -8,7 +9,8 @@ const login = (loginData, callback) => {
         title: 'Incorrect Login',
         text: `The information you have provided does not match my records, please try again.`
     };
-    
+
+    //boolean tells server if user can login
     let success = false;
     
     //connect to database
@@ -39,7 +41,8 @@ const login = (loginData, callback) => {
                     text: `Welcome to Orion's Playground, I hope you enjoy yourself ${loginData.username}.`
                 };
             }
-    
+
+            //run callback
             callback(success,msg);
             
             //close db
@@ -50,6 +53,7 @@ const login = (loginData, callback) => {
     
 };
 
+//checks if name is free, registers them if so and runs callback(boolean)
 const register = (registrationData, callback) => {
     MongoClient.connect(dbUrl,(err, db) => {
         if (err) throw err;
@@ -60,12 +64,16 @@ const register = (registrationData, callback) => {
         //check for login doc, if exist then callback(false), otherwise register and callback(true)
         dbo.collection("login").findOne({name: registrationData.username}, function (err, result) {
             if (err) throw err;
+
+            //if no document found, register and callback(true)
             if (!result) {
                 dbo.collection('login').insertOne({name: registrationData.username, pass: registrationData.password}, (err,res) => {
                     if (err) throw err;
                     callback(true);
                     db.close();
                 });
+
+            //if a document is found, callback(false)
             } else {
                 callback(false);
                 db.close();
