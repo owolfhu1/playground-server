@@ -345,6 +345,7 @@ io.on('connection', socket => {
         AppMap[app.id] = app;
         for (let i in app.members) {
             io.to(UserMap[app.members[i]]).emit('launch', app);
+            Docs.getAllFilenames(app.members[i],array=> io.to(UserMap[app.members[i]]).emit('doc_names',array));
         }
     });
 
@@ -366,14 +367,19 @@ io.on('connection', socket => {
     });
     
     socket.on('save_doc_to_db', data => {
-       
-        console.log(data);
         
         Docs.save({
             filename:data.filename,
             user:username,
             text:data.text
-        },console.log)
+        }, () => {
+
+            //send file names to client's shared docs
+            Docs.getAllFilenames(username,array=> socket.emit('doc_names',array));
+
+            //send title to doc
+            socket.emit(data.id+'title', data.filename)
+        })
         
     });
     
