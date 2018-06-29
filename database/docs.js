@@ -37,7 +37,7 @@ const remove = (docData, callback) => {
         toUnSet[docData.filename] = 1;
         dbo.collection('docs').updateOne({name:docData.user}, {$unset:toUnSet}, (err,res) => {
             if (err) throw err;
-            callback(res);
+            callback();
             db.close();
         });
     });

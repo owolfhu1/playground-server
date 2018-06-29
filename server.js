@@ -359,9 +359,11 @@ io.on('connection', socket => {
     });
     
     socket.on('save_doc', data => {
-        
-        //todo: validate data.name
-        
+
+        //if no title is given, make title 'untitled'
+        if (data.name === '')
+            data.name = 'untitled';
+
         socket.emit(data.id+'save', data.name);
         
     });
@@ -383,18 +385,36 @@ io.on('connection', socket => {
         
     });
     
+    socket.on('load_doc', data => {
+        Docs.getOneDoc(username, data.name, text => {
+            socket.emit(data.appId+'title', data.name);
+
+            let app = AppMap[data.appId];
+
+            for (let i in app.members) {
+                io.to(UserMap[app.members[i]])
+                    .emit(app.id, {text, position:0});
+            }
+
+        });
+    });
+
+    socket.on('delete_doc', title => {
+        Docs.remove({filename:title,user:username},() => {
+            //send file names to client's shared docs
+            console.log('document deleted');
+            Docs.getAllFilenames(username,array=> socket.emit('doc_names',array));
+        })
+    });
+
+
+
 
     //closes a app for a client
     socket.on('close_me', data => {
         socket.emit('close', data.index);
         leaveApp({username:username, id:data.id})
     });
-    
-    
-    
-    
-    
-    
 
     //handles disconnection
     socket.on('disconnect', () => {
