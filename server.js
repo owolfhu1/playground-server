@@ -7,6 +7,7 @@ const Docs = require('./database/docs');
 
 const Tools = require('./tools/tools');
 const Constructors = require('./tools/constructors');
+const GameConstructors = require('./games/gameConstructors');
 
 //============= Server ==============//
 
@@ -353,6 +354,61 @@ io.on('connection', socket => {
             Docs.getAllFilenames(username,array=> socket.emit('doc_names',array));
         })
     });
+
+
+    socket.on('start_connect_4', chatId => {
+
+        console.log('making new connect 4 game');
+
+        let app = new Constructors.ConnectFour(AppMap[chatId]);
+
+        AppMap[app.id] = app;
+
+        //make a new game //handle end of game in callback
+        app.game = new GameConstructors.ConnectFour(result => {
+            for (let m in app.members) {
+                let player = app.members[m];
+
+                for (let i = 1; i < app.members.length; i++)
+                    app.nextTurn();
+
+                io.to(UserMap[player]).emit('popup', {
+                    title : 'Game Over',
+                    text : !result ? 'Looks like no one won this game, nice try everyone!' :
+                        app.turn() === player ? 'Congratulations, you have won!' :
+                        `Sorry but it looks like ${app.turn()} has won`
+                });
+                io.to(UserMap[player]).emit(app.id+'close');
+            }
+        });
+
+        for (let m in app.members) {
+            UserApps[app.members[m]].push(app.id);
+            io.to(UserMap[app.members[m]]).emit('launch', app);
+        }
+
+    });
+
+    socket.on('drop_chip', data => {
+        let app = AppMap[data.id];
+        if (app.turn() === username)
+            app.game.addChip(data.move, (success, board) => {
+
+                if (success) {
+                    app.nextTurn();
+                    for (let i in app.members)
+                        io.to(UserMap[app.members[i]]).emit(app.id, board);
+                } else
+                    socket.emit('popup', {title:'Bad Move', text:'You can\'t make that move'});
+
+            });
+        else
+            socket.emit('popup', {title:'Not Your Turn', text:'Please wait! It is not your turn yet.'});
+
+    });
+
+
+
 
     //closes an app for a client
     socket.on('close_me', data => {

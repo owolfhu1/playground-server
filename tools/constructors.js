@@ -25,4 +25,14 @@ function Doc(chat) {
     this.members = chat.members;
 }
 
-module.exports = {ChatRoom,Doc};
+function ConnectFour(chat) {
+    this.type = 'con_4';
+    this.id = makeId();
+    this.chatId = chat.id;
+    this.members = chat.members;
+    let turn = 0;
+    this.turn = () => this.members[turn];
+    this.nextTurn = () => turn = this.members.length === ++turn ? 0 : turn;
+}
+
+module.exports = {ChatRoom,Doc,ConnectFour};

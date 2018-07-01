@@ -153,5 +153,5 @@ const Game = function(endGameCallback) {
     
 };
 
-//module.exports = Game;
+module.exports = Game;
 
