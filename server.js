@@ -408,8 +408,6 @@ io.on('connection', socket => {
     });
 
 
-
-
     //closes an app for a client
     socket.on('close_me', data => {
         socket.emit('close', data.index);
