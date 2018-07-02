@@ -101,7 +101,7 @@ const pushToUserMap = (username, id) => {
     //hide client's login window
     io.to(id).emit('login_hide');
 
-    //show client's the lobby windows
+    //show client the lobby windows
     io.to(id).emit('lobby_show', username);
 
     //send client the list of users
@@ -247,8 +247,6 @@ io.on('connection', socket => {
 
     //invites a user to an existing chat
     socket.on('chat_invite', data => {
-
-        console.log(data);
 
         //if the name given belongs to a user
         if (data.name in UserMap) {
