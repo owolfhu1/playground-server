@@ -248,6 +248,8 @@ io.on('connection', socket => {
     //invites a user to an existing chat
     socket.on('chat_invite', data => {
 
+        console.log(data);
+
         //if the name given belongs to a user
         if (data.name in UserMap) {
 
@@ -275,14 +277,17 @@ io.on('connection', socket => {
 
     //creates a shared doc for everyone at a table
     socket.on('make_doc', chatId => {
-        let copy = JSON.parse(JSON.stringify(AppMap[chatId]));
 
+        //copy chat and use it to make Doc
+        let copy = JSON.parse(JSON.stringify(AppMap[chatId]));
         let app = new Constructors.Doc(copy);
+
         AppMap[app.id] = app;
         for (let i in app.members) {
             io.to(UserMap[app.members[i]]).emit('launch', app);
             Docs.getAllFilenames(app.members[i],array=> io.to(UserMap[app.members[i]]).emit('doc_names',array));
         }
+
     });
 
     //when user types in doc, updates for all members
@@ -361,15 +366,12 @@ io.on('connection', socket => {
 
 
     socket.on('start_connect_4', chatId => {
+
+        //copy chat and use it to build connect 4
         let copy = JSON.parse(JSON.stringify(AppMap[chatId]));
         let app = new Constructors.ConnectFour(copy);
 
         AppMap[app.id] = app;
-
-
-
-        console.log(app);
-
 
         //make a new game //handle end of game in callback
         app.game = new GameConstructors.ConnectFour(result => {
