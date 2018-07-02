@@ -33,6 +33,8 @@ const leaveApp = data => {
     //get the app
     let app = AppMap[data.id];
 
+    console.log(app);
+
     //remove user from app
     delete app.members[app.members.indexOf(data.username)];
 
@@ -246,6 +248,8 @@ io.on('connection', socket => {
     //invites a user to an existing chat
     socket.on('chat_invite', data => {
 
+        console.log(data);
+
         //if the name given belongs to a user
         if (data.name in UserMap) {
 
@@ -273,12 +277,17 @@ io.on('connection', socket => {
 
     //creates a shared doc for everyone at a table
     socket.on('make_doc', chatId => {
-        let app = new Constructors.Doc(AppMap[chatId]);
+
+        //copy chat and use it to make Doc
+        let copy = JSON.parse(JSON.stringify(AppMap[chatId]));
+        let app = new Constructors.Doc(copy);
+
         AppMap[app.id] = app;
         for (let i in app.members) {
             io.to(UserMap[app.members[i]]).emit('launch', app);
             Docs.getAllFilenames(app.members[i],array=> io.to(UserMap[app.members[i]]).emit('doc_names',array));
         }
+
     });
 
     //when user types in doc, updates for all members
@@ -358,20 +367,21 @@ io.on('connection', socket => {
 
     socket.on('start_connect_4', chatId => {
 
-        console.log('making new connect 4 game');
-
-        let app = new Constructors.ConnectFour(AppMap[chatId]);
+        //copy chat and use it to build connect 4
+        let copy = JSON.parse(JSON.stringify(AppMap[chatId]));
+        let app = new Constructors.ConnectFour(copy);
 
         AppMap[app.id] = app;
 
         //make a new game //handle end of game in callback
         app.game = new GameConstructors.ConnectFour(result => {
+            //go back to last turn
+            for (let i = 1; i < app.members.length; i++)
+                app.nextTurn();
+
+            //send each player a message and close
             for (let m in app.members) {
                 let player = app.members[m];
-
-                for (let i = 1; i < app.members.length; i++)
-                    app.nextTurn();
-
                 io.to(UserMap[player]).emit('popup', {
                     title : 'Game Over',
                     text : !result ? 'Looks like no one won this game, nice try everyone!' :
