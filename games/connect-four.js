@@ -37,7 +37,7 @@ const Game = function(endGameCallback) {
         let xx = x;
         while (xx > -1 && board[y][xx] === chip) {--xx;}
         xx++;
-        while (xx < 6) {
+        while (xx < 7) {
             if (board[y][xx] === chip) {
                 count++;
                 xx++;
