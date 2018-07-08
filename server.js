@@ -128,24 +128,19 @@ io.on('connection', socket => {
     //when register is pressed on login component
     socket.on('register', data => {
         
-        //hash the password (more secure than nothing)
         data.password = Tools.hash(data.password);
 
-        // ===== VALIDATION =====
-        //user tried to register '', deny
         if (data.username === '')
             socket.emit('popup', {
                 title: 'Bad Username',
                 text: 'Please enter a username to register'
             });
-        //username is too long
         else if (data.username.length > 12)
             socket.emit('popup', {
                 title: 'Bad Username',
                 text: 'Please enter a username to register'
             });
             
-        //otherwise try to register
         else Login.register(data, success => {
         
                 //send message based on if registered or not
@@ -296,88 +291,44 @@ io.on('connection', socket => {
                 .emit(app.id, {text:data.text, position:data.position});
         }
     });
-
-    //requests from doc menu to save the document-> sends request to client document window to save doc
-    //that then sends the request back to server with document body and title which finaly gets saved
-    //TODO: refactor this to do all the work in here and get rid of 'save_doc_to_db' below!!!
-    /**can probably refactor by sending a bound function as a prop to doc menu*/
-    //so yeah, fix that lazy bum..
+    
     socket.on('save_doc', data => {
-
-        //if invalid title, make title 'untitled'
-        if (data.name === '' || data.name === 'name' || data.name.indexOf('.') > -1)
-            data.name = 'untitled';
-
-        //sends request back to client
-        socket.emit(data.id+'save', data.name);
-        
-    });
-    //gets doc value and title and saves the data at last
-    socket.on('save_doc_to_db', data => {
-
-        //saves data
         Docs.save({
             filename:data.filename,
             user:username,
             text:data.text
         }, () => {
-            //in callback
-            //send file names to client's shared docs
             Docs.getAllFilenames(username,array=> socket.emit('doc_names',array));
-
-            //send title to doc
             socket.emit(data.id+'title', data.filename)
-        })
-        
+        });
     });
-
-    //when client requests to load a document,
-    //get the document and send to all doc members.
+    
     socket.on('load_doc', data => {
-
-        //get the document
         Docs.getOneDoc(username, data.name, text => {
-            //in callback
-            //send title to user
             socket.emit(data.appId+'title', data.name);
-
-            //get the app
             let app = AppMap[data.appId];
-
-            //send loaded data to all doc users
-            for (let i in app.members) {
+            for (let i in app.members)
                 io.to(UserMap[app.members[i]])
                     .emit(app.id, {text, position:0});
-            }
-
         });
-
     });
-
-    //client requests to delete a doc, delete it and update menu buttons
+    
     socket.on('delete_doc', title => {
         Docs.remove({filename:title,user:username},() => {
-            //send file names to client's shared docs to make buttons
             Docs.getAllFilenames(username,array=> socket.emit('doc_names',array));
         })
     });
-
 
     socket.on('start_connect_4', chatId => {
 
-        //copy chat and use it to build connect 4
         let copy = JSON.parse(JSON.stringify(AppMap[chatId]));
         let app = new Constructors.ConnectFour(copy);
 
         AppMap[app.id] = app;
 
-        //make a new game //handle end of game in callback
         app.game = new GameConstructors.ConnectFour(result => {
-            //go back to last turn
             for (let i = 1; i < app.members.length; i++)
                 app.nextTurn();
-
-            //send each player a message and close
             for (let m in app.members) {
                 let player = app.members[m];
                 io.to(UserMap[player]).emit('popup', {
@@ -451,5 +402,4 @@ io.on('connection', socket => {
 
 });
 
-//start listening for connections
 server.listen(port, () => console.log(`Listening on port ${port}`));
