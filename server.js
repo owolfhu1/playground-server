@@ -33,8 +33,6 @@ const leaveApp = data => {
     //get the app
     let app = AppMap[data.id];
 
-    console.log(app);
-
     //remove user from app
     delete app.members[app.members.indexOf(data.username)];
 
@@ -102,7 +100,7 @@ const pushToUserMap = (username, id) => {
     io.to(id).emit('login_hide');
 
     //show client the lobby windows
-    io.to(id).emit('lobby_show', username);
+    io.to(id).emit('lobby_show');
 
     //send client the list of users
     io.to(id).emit('set_login_list', Tools.getList(UserMap));
@@ -366,7 +364,8 @@ io.on('connection', socket => {
 
     });
 
-
+    socket.on('task_click', type => socket.emit('task_'+ type));
+    
     //closes an app for a client
     socket.on('close_me', data => {
         socket.emit('close', data.index);
