@@ -27,22 +27,14 @@ const UserApps = {};    // username : [array of app ids]
 
 //============= Functions ==============//
 
-//takes app id and username, and handles removing username from app
+//handles removing username from app
 const leaveApp = data => {
-
-    //get the app
+    
     let app = AppMap[data.id];
-
-    //remove user from app
     delete app.members[app.members.indexOf(data.username)];
-
-    //remove app from user's UserApps array
     UserApps[data.username].splice(UserApps[data.username].indexOf(app.id));
-
-    //switch on app.type, handles specific apps differently
     switch (app.type) {
-
-        //chat room
+        
         case 'chat' :
 
             //tells all remaining members to remove user
@@ -50,11 +42,9 @@ const leaveApp = data => {
                 io.to(UserMap[app.members[i]]).emit(data.id + "leave", data.username);
             }
             break;
-
-        //shared doc
+        
         case 'doc' :
-
-            //get the chat associated with document
+            
             let chat = AppMap[app.chatId];
 
             //tell chat members user has closed document
@@ -72,58 +62,47 @@ const leaveApp = data => {
         //'
 
     }
-
-    //if there are no members left in app, delete app
     if (app.members.length === 0){
         delete AppMap[data.id];
     }
 
 };
 
-//sends emit to all users in UserMap
 const emitToUserMap = (type, msg) => {
     for (let key in UserMap) {
         io.to(UserMap[key]).emit(type, msg);
     }
 };
 
-//adds a client to UserMap and handles clients accordingly
 const pushToUserMap = (username, id) => {
-
-    //sends user to all currently logged in clients for OnlineList
+    
     emitToUserMap('user_login', username);
-
-    //put user in UserMap
+    
     UserMap[username] = id;
-
-    //hide client's login window
+    
     io.to(id).emit('login_hide');
 
-    //show client the lobby windows
     io.to(id).emit('lobby_show');
-
-    //send client the list of users
+    
     io.to(id).emit('set_login_list', Tools.getList(UserMap));
-
-    //send user login message to global chat
+    
     emitToUserMap('global_chat',`User '${username}' has logged in.`);
 
 };
 
-//interaction from clients handled here
 io.on('connection', socket => {
     console.log('User connected');
 
     //variables specific to client that has connected
     let id = socket.id;
     let username = '';
-
-    //just logs a message from the client onto the server for testing
+    
     socket.on('log', msg => {
         console.log(msg);
     });
-
-    //when register is pressed on login component
+    
+    socket.on('get_name', () => socket.emit('get_name', username));
+    
     socket.on('register', data => {
         
         data.password = Tools.hash(data.password);
@@ -160,8 +139,7 @@ io.on('connection', socket => {
             });
 
     });
-
-    //attempts to log user in
+    
     socket.on('login', data => {
 
         //hash the password (more secure than nothing)
@@ -194,11 +172,9 @@ io.on('connection', socket => {
         }
 
     });
-
-    //global chat gets message and sends out to clients
+    
     socket.on('global_chat', msg => emitToUserMap('global_chat',`${username}: ${msg}`));
-
-    //chat with user
+    
     socket.on('chat_with', name => {
 
         //if user tries to chat with them self
@@ -229,16 +205,14 @@ io.on('connection', socket => {
         io.to(UserMap[name]).emit('launch', room);
 
     });
-
-    //sends a message to clients chat rooms
+    
     socket.on('chat_room_msg', data => {
         let room = AppMap[data.id];
         for (let index in room.members) {
             io.to(UserMap[room.members[index]]).emit(data.id, `${username}: ${data.input}`);
         }
     });
-
-    //invites a user to an existing chat
+    
     socket.on('chat_invite', data => {
 
         //if the name given belongs to a user
@@ -265,8 +239,7 @@ io.on('connection', socket => {
         }
 
     });
-
-    //creates a shared doc for everyone at a table
+    
     socket.on('make_doc', chatId => {
 
         //copy chat and use it to make Doc
@@ -280,8 +253,26 @@ io.on('connection', socket => {
         }
 
     });
-
-    //when user types in doc, updates for all members
+    
+    
+    
+    socket.on('make_special', data => {
+        
+        console.log('making special');
+        
+        let copy = JSON.parse(JSON.stringify(AppMap[data.id]));
+        let app = new Constructors.SpecialGame(copy);
+        
+        AppMap[app.id] = app;
+        for (let i in app.members) {
+            io.to(UserMap[app.members[i]]).emit('launch', app);
+        }
+        
+    });
+    
+    
+    
+    
     socket.on('update_doc', data => {
         let app = AppMap[data.id];
         for (let i in app.members) {
@@ -366,7 +357,6 @@ io.on('connection', socket => {
 
     socket.on('task_click', type => socket.emit('task_'+ type));
     
-    //closes an app for a client
     socket.on('close_me', data => {
         socket.emit('close', data.index);
         leaveApp({username:username, id:data.id})

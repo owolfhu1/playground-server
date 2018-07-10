@@ -35,4 +35,11 @@ function ConnectFour(chat) {
     this.nextTurn = () => turn = this.members.length === ++turn ? 0 : turn;
 }
 
-module.exports = {ChatRoom,Doc,ConnectFour};
+function SpecialGame(chat) {
+    this.type = 'spec';
+    this.id = makeId();
+    this.chatId = chat.id;
+    this.members = chat.members;
+}
+
+module.exports = {ChatRoom,Doc,ConnectFour,SpecialGame};
