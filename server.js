@@ -253,14 +253,10 @@ io.on('connection', socket => {
         }
 
     });
-    
-    
-    
-    socket.on('make_special', data => {
+
+    socket.on('make_special', chatId => {
         
-        console.log('making special');
-        
-        let copy = JSON.parse(JSON.stringify(AppMap[data.id]));
+        let copy = JSON.parse(JSON.stringify(AppMap[chatId]));
         let app = new Constructors.SpecialGame(copy);
         
         AppMap[app.id] = app;
