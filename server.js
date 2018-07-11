@@ -101,6 +101,8 @@ io.on('connection', socket => {
         console.log(msg);
     });
     
+    socket.on('self', emit => socket.emit(emit.type, emit.data));
+    
     socket.on('get_name', () => socket.emit('get_name', username));
     
     socket.on('register', data => {
@@ -254,6 +256,9 @@ io.on('connection', socket => {
 
     });
 
+    
+    
+    
     socket.on('make_special', chatId => {
         
         let copy = JSON.parse(JSON.stringify(AppMap[chatId]));
@@ -265,7 +270,6 @@ io.on('connection', socket => {
         }
         
     });
-    
     
     
     
