@@ -103,6 +103,11 @@ io.on('connection', socket => {
     
     socket.on('self', emit => socket.emit(emit.type, emit.data));
     
+    socket.on('close_me', data => {
+        socket.emit('close', data.index);
+        leaveApp({username:username, id:data.id})
+    });
+    
     socket.on('get_name', () => socket.emit('get_name', username));
     
     socket.on('register', data => {
@@ -177,6 +182,21 @@ io.on('connection', socket => {
     
     socket.on('global_chat', msg => emitToUserMap('global_chat',`${username}: ${msg}`));
     
+    socket.on('make_special', chatId => {
+        
+        let copy = JSON.parse(JSON.stringify(AppMap[chatId]));
+        let app = new Constructors.SpecialGame(copy);
+        
+        AppMap[app.id] = app;
+        for (let i in app.members) {
+            io.to(UserMap[app.members[i]]).emit('launch', app);
+        }
+        
+    });
+    
+    
+    /** CHAT
+     * */
     socket.on('chat_with', name => {
 
         //if user tries to chat with them self
@@ -242,36 +262,22 @@ io.on('connection', socket => {
 
     });
     
+    
+    /** DOCUMENT
+     * */
     socket.on('make_doc', chatId => {
-
+    
         //copy chat and use it to make Doc
         let copy = JSON.parse(JSON.stringify(AppMap[chatId]));
         let app = new Constructors.Doc(copy);
-
+    
         AppMap[app.id] = app;
         for (let i in app.members) {
             io.to(UserMap[app.members[i]]).emit('launch', app);
             Docs.getAllFilenames(app.members[i],array=> io.to(UserMap[app.members[i]]).emit('doc_names',array));
         }
-
+    
     });
-
-    
-    
-    
-    socket.on('make_special', chatId => {
-        
-        let copy = JSON.parse(JSON.stringify(AppMap[chatId]));
-        let app = new Constructors.SpecialGame(copy);
-        
-        AppMap[app.id] = app;
-        for (let i in app.members) {
-            io.to(UserMap[app.members[i]]).emit('launch', app);
-        }
-        
-    });
-    
-    
     
     socket.on('update_doc', data => {
         let app = AppMap[data.id];
@@ -308,6 +314,9 @@ io.on('connection', socket => {
         })
     });
 
+    
+    /** CONNECT FOUR
+     * */
     socket.on('start_connect_4', chatId => {
 
         let copy = JSON.parse(JSON.stringify(AppMap[chatId]));
@@ -336,7 +345,7 @@ io.on('connection', socket => {
         }
 
     });
-
+    
     socket.on('drop_chip', data => {
         let app = AppMap[data.id];
         if (app.turn() === username)
@@ -354,15 +363,8 @@ io.on('connection', socket => {
             socket.emit('popup', {title:'Not Your Turn', text:'Please wait! It is not your turn yet.'});
 
     });
-
-    socket.on('task_click', type => socket.emit('task_'+ type));
     
-    socket.on('close_me', data => {
-        socket.emit('close', data.index);
-        leaveApp({username:username, id:data.id})
-    });
-
-    //handles disconnection
+   
     socket.on('disconnect', () => {
         console.log('user disconnected');
 
