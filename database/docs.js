@@ -1,11 +1,11 @@
 const MongoClient = require('mongodb').MongoClient;
-const dbUrl = "mongodb://orion:pass12@ds117711.mlab.com:17711/heroku_psk3b1p4";
+const dbUrl = "mongodb+srv://orion:pass@cluster0.gdt6i.mongodb.net/playground?retryWrites=true&w=majority";
 
 //no callback, should be done once when user registers
 const create = user => {
     MongoClient.connect(dbUrl,(err, db) => {
         if (err) throw err;
-        let dbo = db.db("heroku_psk3b1p4");
+        let dbo = db.db("playground");
         dbo.collection('docs').insertOne({name: user}, (err,res) => {
            if (err) throw err;
            db.close();
@@ -17,7 +17,7 @@ const create = user => {
 const save = (docData, callback) => {
     MongoClient.connect(dbUrl, (err,db) => {
         if (err) throw err;
-        let dbo = db.db("heroku_psk3b1p4");
+        let dbo = db.db("playground");
         let toSet = {};
         toSet[docData.filename] = docData.text;
         dbo.collection('docs').updateOne({name:docData.user}, {$set:toSet}, (err,res) => {
@@ -32,7 +32,7 @@ const save = (docData, callback) => {
 const remove = (docData, callback) => {
     MongoClient.connect(dbUrl, (err,db) => {
         if (err) throw err;
-        let dbo = db.db("heroku_psk3b1p4");
+        let dbo = db.db("playground");
         let toUnSet = {};
         toUnSet[docData.filename] = 1;
         dbo.collection('docs').updateOne({name:docData.user}, {$unset:toUnSet}, (err,res) => {
@@ -47,7 +47,7 @@ const remove = (docData, callback) => {
 const getOneDoc = (name, filename, callback) => {
     MongoClient.connect(dbUrl, (err,db) => {
         if (err) throw err;
-        let dbo = db.db("heroku_psk3b1p4");
+        let dbo = db.db("playground");
         dbo.collection('docs').findOne({name}, (err,res) => {
             if (err) throw err;
 
@@ -63,7 +63,7 @@ const getAllFilenames = (name, callback) => {
     
     MongoClient.connect(dbUrl, (err,db) => {
         if (err) throw err;
-        let dbo = db.db("heroku_psk3b1p4");
+        let dbo = db.db("playground");
         dbo.collection('docs').findOne({name}, (err,res) => {
             if (err) throw err;
 
