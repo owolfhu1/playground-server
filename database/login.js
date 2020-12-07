@@ -1,5 +1,5 @@
 const MongoClient = require('mongodb').MongoClient;
-const dbUrl = "mongodb://orion:pass12@ds117711.mlab.com:17711/heroku_psk3b1p4";
+const dbUrl = "mongodb+srv://orion:pass@cluster0.gdt6i.mongodb.net/playground?retryWrites=true&w=majority";
 
 //handles verifying data is correct then runs callback(boolean,message)
 const login = (loginData, callback) => {
@@ -18,7 +18,7 @@ const login = (loginData, callback) => {
         if (err) throw err;
         
         //get database
-        let dbo = db.db("heroku_psk3b1p4");
+        let dbo = db.db("playground");
         
         //get the relevant login doc
         dbo.collection("login").findOne({name: loginData.username}, function (err, result) {
@@ -59,7 +59,7 @@ const register = (registrationData, callback) => {
         if (err) throw err;
         
         //get database
-        let dbo = db.db("heroku_psk3b1p4");
+        let dbo = db.db("playground");
         
         //check for login doc, if exist then callback(false), otherwise register and callback(true)
         dbo.collection("login").findOne({name: registrationData.username}, function (err, result) {
